@@ -5,10 +5,9 @@ const express = require('express');
 const cors = require('cors');
 const dns = require('dns').promises;
 const { Pool } = require('pg');
-const nodemailer = require('nodemailer'); // <-- Aggiunto il Postino
+const nodemailer = require('nodemailer');
 
 const app = express();
-
 
 // Abilitiamo CORS subito
 app.use(cors());
@@ -36,9 +35,7 @@ async function createPool() {
         ? lookupRes.address
         : null;
 
-  if (!ip4) {
-    throw new Error(`Could not resolve IPv4 for ${POOLER_HOST}`);
-  }
+  if (!ip4) throw new Error(`Could not resolve IPv4 for ${POOLER_HOST}`);
 
   return new Pool({
     ...poolConfig,
@@ -51,14 +48,30 @@ const poolPromise = createPool();
 // -----------------------------------------
 // Configurazione Email (Postino Brevo)
 // -----------------------------------------
+// REQUIRED ENV VARS (in Render):
+// - BREVO_SMTP_USER
+// - BREVO_SMTP_PASS
+// - BREVO_FROM (es: "VIP Club <tuomittente@dominio.com>")
+// - CAMPAIGN_TO (es: "email-che-accetta-il-to" oppure la tua email)
+//
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587,
-    auth: {
-        user: 'a9b81d001@smtp-brevo.com', // <-- DA COMPILARE DOPO
-        pass: process.env.CHIAVE_SMPT  // <-- DA COMPILARE DOPO
-    }
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false, // IMPORTANT for 587
+  auth: {
+    user: process.env.BREVO_SMTP_USER,
+    pass: process.env.BREVO_SMTP_PASS,
+  },
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 30000,
 });
+
+if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASS) {
+  console.warn(
+    '⚠️ Missing Brevo SMTP credentials. Set BREVO_SMTP_USER and BREVO_SMTP_PASS in Render env vars.'
+  );
+}
 
 // -----------------------------------------
 // API 1: Registrazione Cliente
@@ -81,7 +94,9 @@ app.post('/api/registrati', async (req, res) => {
 
     await pool.query(query, values);
 
-    res.status(201).json({ messaggio: 'Registrazione avvenuta con successo! Mostra questa schermata in cassa.' });
+    res
+      .status(201)
+      .json({ messaggio: 'Registrazione avvenuta con successo! Mostra questa schermata in cassa.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ errore: 'Errore durante la registrazione. Forse sei già iscritto?' });
@@ -92,10 +107,9 @@ app.post('/api/registrati', async (req, res) => {
 // API 2: Ottieni lista clienti (Admin)
 // -----------------------------------------
 app.get('/api/clienti', async (req, res) => {
-  // --- CONTROLLO PASSWORD ---
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== process.env.ADMIN_PASSWORD) { // <-- CAMBIA QUESTA PASSWORD
-      return res.status(401).json({ errore: "Accesso negato! Password errata." });
+  if (passwordInserita !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ errore: 'Accesso negato! Password errata.' });
   }
 
   try {
@@ -116,46 +130,58 @@ app.get('/api/clienti', async (req, res) => {
 // API 3: Invia Campagna (Admin)
 // -----------------------------------------
 app.post('/api/invia-messaggio', async (req, res) => {
-  // --- CONTROLLO PASSWORD ---
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== process.env.ADMIN_PASSWORD) { // <-- CAMBIA QUESTA PASSWORD (uguale a sopra)
-      return res.status(401).json({ errore: "Accesso negato! Non puoi inviare messaggi." });
+  if (passwordInserita !== process.env.ADMIN_PASSWORD) {
+    return res.status(401).json({ errore: 'Accesso negato! Non puoi inviare messaggi.' });
   }
 
   const { tipo, messaggio } = req.body;
 
   try {
-      const pool = await poolPromise; 
+    const pool = await poolPromise;
 
-      if (tipo === 'email') {
-          // Peschiamo le email dei clienti che hanno dato il consenso
-          const { rows } = await pool.query('SELECT email FROM clienti WHERE email IS NOT NULL AND consenso_gdpr = true');
-          const listaEmail = rows.map(cliente => cliente.email);
+    if (tipo === 'email') {
+      const { rows } = await pool.query(
+        'SELECT email FROM clienti WHERE email IS NOT NULL AND consenso_gdpr = true'
+      );
 
-          if (listaEmail.length === 0) {
-              return res.status(400).json({ errore: "Nessun cliente trovato o nessuno ha dato il consenso." });
-          }
+      const listaEmail = rows.map((cliente) => cliente.email).filter(Boolean);
 
-          // Inviamo la mail
-          await transporter.sendMail({
-              from: '"VIP Club" <sexpax07@gmail.com>', // <-- CAMBIA CON LA TUA EMAIL
-              to: "gbri60828@gmail.com",                // <-- CAMBIA CON LA TUA EMAIL
-              bcc: listaEmail.join(','),                     
-              subject: "Novità e Sconti dal tuo Bar!",
-              text: messaggio
-          });
-
-          console.log(`Email inviata a ${listaEmail.length} clienti.`);
-          return res.status(200).json({ messaggio: `Campagna Email inviata a ${listaEmail.length} clienti!` });
-          
-      } else if (tipo === 'sms') {
-          console.log(`Simulazione SMS: ${messaggio}`);
-          return res.status(200).json({ messaggio: `Simulazione: SMS non ancora configurato.` });
+      if (listaEmail.length === 0) {
+        return res.status(400).json({ errore: 'Nessun cliente trovato o nessuno ha dato il consenso.' });
       }
 
+      const from = process.env.BREVO_FROM;
+      const campaignTo = process.env.CAMPAIGN_TO;
+
+      if (!from || !campaignTo) {
+        return res.status(500).json({
+          errore: 'Mancano variabili env: BREVO_FROM e/o CAMPAIGN_TO.',
+        });
+      }
+
+      await transporter.sendMail({
+        from,                 // from deve essere autorizzato su Brevo
+        to: campaignTo,       // usa un destinatario "test"
+        bcc: listaEmail,      // BCC con array va benissimo
+        subject: 'Novità e Sconti dal tuo Bar!',
+        text: messaggio,
+      });
+
+      console.log(`Email inviata a ${listaEmail.length} clienti.`);
+      return res
+        .status(200)
+        .json({ messaggio: `Campagna Email inviata a ${listaEmail.length} clienti!` });
+
+    } else if (tipo === 'sms') {
+      console.log(`Simulazione SMS: ${messaggio}`);
+      return res.status(200).json({ messaggio: 'Simulazione: SMS non ancora configurato.' });
+    }
+
+    return res.status(400).json({ errore: 'Tipo campagna non valido.' });
   } catch (err) {
-      console.error("Errore invio campagna:", err);
-      res.status(500).json({ errore: "Errore durante l'invio della campagna." });
+    console.error('Errore invio campagna:', err);
+    res.status(500).json({ errore: 'Errore durante l'invio della campagna.' });
   }
 });
 
