@@ -6,8 +6,16 @@ const cors = require('cors');
 const dns = require('dns').promises;
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer'); // <-- Aggiunto il Postino
+const nodemailer = require('nodemailer'); 
+const twilio = require('twilio');
 
 const app = express();
+
+// Configurazione Twilio
+const twilioClient = new twilio(
+    'INSERISCI_IL_TUO_ACCOUNT_SID', 
+    'INSERISCI_IL_TUO_AUTH_TOKEN'
+);
 
 // Abilitiamo CORS subito
 app.use(cors());
@@ -54,8 +62,8 @@ const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 587,
     auth: {
-        user: 'INSERISCI_QUI_LA_TUA_EMAIL_BREVO', // <-- DA COMPILARE DOPO
-        pass: 'INSERISCI_QUI_LA_TUA_CHIAVE_SMTP'  // <-- DA COMPILARE DOPO
+        user: 'a9b81d001@smtp-brevo.com', // <-- DA COMPILARE DOPO
+        pass: process.env.CHIAVE_SMPT  // <-- DA COMPILARE DOPO
     }
 });
 
