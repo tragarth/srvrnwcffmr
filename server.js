@@ -6,15 +6,9 @@ const cors = require('cors');
 const dns = require('dns').promises;
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer'); // <-- Aggiunto il Postino
-const twilio = require('twilio');
 
 const app = express();
 
-// Configurazione Twilio
-const twilioClient = new twilio(
-    'INSERISCI_IL_TUO_ACCOUNT_SID', 
-    'INSERISCI_IL_TUO_AUTH_TOKEN'
-);
 
 // Abilitiamo CORS subito
 app.use(cors());
