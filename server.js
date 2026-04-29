@@ -94,7 +94,7 @@ app.post('/api/registrati', async (req, res) => {
 app.get('/api/clienti', async (req, res) => {
   // --- CONTROLLO PASSWORD ---
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== "golf7R") { // <-- CAMBIA QUESTA PASSWORD
+  if (passwordInserita !== process.env.ADMIN_PASSWORD) { // <-- CAMBIA QUESTA PASSWORD
       return res.status(401).json({ errore: "Accesso negato! Password errata." });
   }
 
@@ -118,7 +118,7 @@ app.get('/api/clienti', async (req, res) => {
 app.post('/api/invia-messaggio', async (req, res) => {
   // --- CONTROLLO PASSWORD ---
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== "golf7R") { // <-- CAMBIA QUESTA PASSWORD (uguale a sopra)
+  if (passwordInserita !== process.env.ADMIN_PASSWORD) { // <-- CAMBIA QUESTA PASSWORD (uguale a sopra)
       return res.status(401).json({ errore: "Accesso negato! Non puoi inviare messaggi." });
   }
 
@@ -138,8 +138,8 @@ app.post('/api/invia-messaggio', async (req, res) => {
 
           // Inviamo la mail
           await transporter.sendMail({
-              from: '"VIP Club" <INSERISCI_LA_TUA_EMAIL>', // <-- CAMBIA CON LA TUA EMAIL
-              to: "INSERISCI_LA_TUA_EMAIL",                // <-- CAMBIA CON LA TUA EMAIL
+              from: '"VIP Club" <sexpax07@gmail.com>', // <-- CAMBIA CON LA TUA EMAIL
+              to: "gbri60828@gmail.com",                // <-- CAMBIA CON LA TUA EMAIL
               bcc: listaEmail.join(','),                     
               subject: "Novità e Sconti dal tuo Bar!",
               text: messaggio
