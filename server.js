@@ -22,7 +22,7 @@ const pool = new Pool({
   host: 'aws-0-eu-west-1.pooler.supabase.com',
   database: 'postgres',
   password: 'c4TNu$4*5d93R+t',
-  port: 6543,
+  port: 5432,
 });
 
 // -----------------------------------------
