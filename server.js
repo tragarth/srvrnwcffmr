@@ -6,7 +6,6 @@ const cors = require('cors');
 const dns = require('dns').promises;
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer'); // <-- Aggiunto il Postino
-const nodemailer = require('nodemailer'); 
 const twilio = require('twilio');
 
 const app = express();
