@@ -29,11 +29,23 @@ const poolConfig = {
 
 async function createPool() {
   // Force IPv4 to avoid ENETUNREACH on IPv6
-  const ip4 = await dns.lookup(POOLER_HOST, { family: 4 });
+  const lookupRes = await dns.lookup(POOLER_HOST, { family: 4 });
+
+  // dns.lookup can return either a string or an object depending on Node/runtime
+  const ip4 =
+    typeof lookupRes === 'string'
+      ? lookupRes
+      : lookupRes && typeof lookupRes.address === 'string'
+        ? lookupRes.address
+        : null;
+
+  if (!ip4) {
+    throw new Error(`Could not resolve IPv4 for ${POOLER_HOST}`);
+  }
 
   return new Pool({
     ...poolConfig,
-    host: ip4,
+    host: ip4, // MUST be a string
   });
 }
 
@@ -47,7 +59,7 @@ app.post('/api/registrati', async (req, res) => {
   const { nome, email, telefono, consenso_gdpr } = req.body;
 
   if (!consenso_gdpr) {
-    return res.status(400).json({ errore: "Il consenso alla privacy è obbligatorio." });
+    return res.status(400).json({ errore: 'Il consenso alla privacy è obbligatorio.' });
   }
 
   try {
@@ -61,10 +73,12 @@ app.post('/api/registrati', async (req, res) => {
 
     await pool.query(query, values);
 
-    res.status(201).json({ messaggio: "Registrazione avvenuta con successo! Mostra questa schermata in cassa." });
+    res
+      .status(201)
+      .json({ messaggio: 'Registrazione avvenuta con successo! Mostra questa schermata in cassa.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ errore: "Errore durante la registrazione. Forse sei già iscritto?" });
+    res.status(500).json({ errore: 'Errore durante la registrazione. Forse sei già iscritto?' });
   }
 });
 
@@ -78,10 +92,11 @@ app.get('/api/clienti', async (req, res) => {
     const { rows } = await pool.query(
       'SELECT id, nome, email, telefono, data_registrazione FROM clienti ORDER BY data_registrazione DESC'
     );
+
     res.status(200).json(rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ errore: "Impossibile recuperare i clienti." });
+    res.status(500).json({ errore: 'Impossibile recuperare i clienti.' });
   }
 });
 
