@@ -181,7 +181,7 @@ app.post('/api/invia-messaggio', async (req, res) => {
     return res.status(400).json({ errore: 'Tipo campagna non valido.' });
   } catch (err) {
     console.error('Errore invio campagna:', err);
-    res.status(500).json({ errore: 'Errore durante l'invio della campagna.' });
+    res.status(500).json({ errore: "Errore durante l'invio della campagna." });
   }
 });
 
