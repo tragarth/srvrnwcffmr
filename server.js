@@ -2,76 +2,97 @@
 // Dipendenze: npm install express cors pg
 
 const express = require('express');
-const cors = require('cors'); // <-- 1. Importiamo CORS
+const cors = require('cors');
+const dns = require('dns').promises;
 const { Pool } = require('pg');
 
 const app = express();
 
-// <-- 2. ABILITIAMO CORS SUBITO (Prima di qualsiasi altra cosa)
-// Questo dice al server: "Accetta richieste anche se arrivano da porte diverse"
-app.use(cors()); 
-
-// Permette al server di leggere i dati in formato JSON
+// Abilitiamo CORS subito
+app.use(cors());
 app.use(express.json());
 
 // -----------------------------------------
-// Configurazione del Database (Supabase o altro)
+// Configurazione del Database
 // -----------------------------------------
-const pool = new Pool({
+const POOLER_HOST = 'aws-0-eu-west-1.pooler.supabase.com';
+
+// IMPORTANT: keep port 6543 for transaction pooler as in your original code
+const POOLER_PORT = 6543;
+
+const poolConfig = {
   user: 'postgres.gnpsuzytpytsvngdwxol',
-  host: 'aws-0-eu-west-1.pooler.supabase.com',
   database: 'postgres',
   password: 'c4TNu$4*5d93R+t',
-  port: 6543,
-});
+  port: POOLER_PORT,
+};
+
+async function createPool() {
+  // Force IPv4 to avoid ENETUNREACH on IPv6
+  const ip4 = await dns.lookup(POOLER_HOST, { family: 4 });
+
+  return new Pool({
+    ...poolConfig,
+    host: ip4,
+  });
+}
+
+// Initialize once
+const poolPromise = createPool();
 
 // -----------------------------------------
-// API 1: Registrazione Cliente (dal QR Code)
+// API 1: Registrazione Cliente
 // -----------------------------------------
 app.post('/api/registrati', async (req, res) => {
-    const { nome, email, telefono, consenso_gdpr } = req.body;
+  const { nome, email, telefono, consenso_gdpr } = req.body;
 
-    if (!consenso_gdpr) {
-        return res.status(400).json({ errore: "Il consenso alla privacy è obbligatorio." });
-    }
+  if (!consenso_gdpr) {
+    return res.status(400).json({ errore: "Il consenso alla privacy è obbligatorio." });
+  }
 
-    try {
-        const query = `
-            INSERT INTO clienti (nome, email, telefono, consenso_gdpr) 
-            VALUES ($1, $2, $3, $4) RETURNING *
-        `;
-        const values = [nome, email, telefono, consenso_gdpr];
-        
-        await pool.query(query, values);
-        res.status(201).json({ messaggio: "Registrazione avvenuta con successo! Mostra questa schermata in cassa." });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ errore: "Errore durante la registrazione. Forse sei già iscritto?" });
-    }
+  try {
+    const pool = await poolPromise;
+
+    const query = `
+      INSERT INTO clienti (nome, email, telefono, consenso_gdpr)
+      VALUES ($1, $2, $3, $4) RETURNING *
+    `;
+    const values = [nome, email, telefono, consenso_gdpr];
+
+    await pool.query(query, values);
+
+    res.status(201).json({ messaggio: "Registrazione avvenuta con successo! Mostra questa schermata in cassa." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ errore: "Errore durante la registrazione. Forse sei già iscritto?" });
+  }
 });
 
 // -----------------------------------------
-// API 2: Ottieni lista clienti (per l'Admin)
+// API 2: Ottieni lista clienti (Admin)
 // -----------------------------------------
 app.get('/api/clienti', async (req, res) => {
-    try {
-        const { rows } = await pool.query('SELECT id, nome, email, telefono, data_registrazione FROM clienti ORDER BY data_registrazione DESC');
-        res.status(200).json(rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ errore: "Impossibile recuperare i clienti." });
-    }
+  try {
+    const pool = await poolPromise;
+
+    const { rows } = await pool.query(
+      'SELECT id, nome, email, telefono, data_registrazione FROM clienti ORDER BY data_registrazione DESC'
+    );
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ errore: "Impossibile recuperare i clienti." });
+  }
 });
 
 // -----------------------------------------
-// API 3: Invia Campagna (per l'Admin)
+// API 3: Invia Campagna (Admin)
 // -----------------------------------------
 app.post('/api/invia-messaggio', async (req, res) => {
-    const { tipo, messaggio } = req.body;
-    
-    // Logica futura per Brevo/Twilio
-    console.log(`Simulazione invio ${tipo}: ${messaggio}`);
-    res.status(200).json({ messaggio: `Campagna ${tipo} inviata con successo!` });
+  const { tipo, messaggio } = req.body;
+
+  console.log(`Simulazione invio ${tipo}: ${messaggio}`);
+  res.status(200).json({ messaggio: `Campagna ${tipo} inviata con successo!` });
 });
 
 // -----------------------------------------
@@ -79,5 +100,5 @@ app.post('/api/invia-messaggio', async (req, res) => {
 // -----------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server del bar avviato e in ascolto sulla porta ${PORT}`);
+  console.log(`Server del bar avviato e in ascolto sulla porta ${PORT}`);
 });
