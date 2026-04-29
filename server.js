@@ -93,7 +93,7 @@ app.post('/api/registrati', async (req, res) => {
 app.get('/api/clienti', async (req, res) => {
   // --- CONTROLLO PASSWORD ---
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== "METTI_QUI_LA_TUA_PASSWORD") { // <-- CAMBIA QUESTA PASSWORD
+  if (passwordInserita !== "golf7R") { // <-- CAMBIA QUESTA PASSWORD
       return res.status(401).json({ errore: "Accesso negato! Password errata." });
   }
 
@@ -117,7 +117,7 @@ app.get('/api/clienti', async (req, res) => {
 app.post('/api/invia-messaggio', async (req, res) => {
   // --- CONTROLLO PASSWORD ---
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== "METTI_QUI_LA_TUA_PASSWORD") { // <-- CAMBIA QUESTA PASSWORD (uguale a sopra)
+  if (passwordInserita !== "golf7R") { // <-- CAMBIA QUESTA PASSWORD (uguale a sopra)
       return res.status(401).json({ errore: "Accesso negato! Non puoi inviare messaggi." });
   }
 
