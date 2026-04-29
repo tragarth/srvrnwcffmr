@@ -18,11 +18,11 @@ app.use(express.json());
 // Configurazione del Database (Supabase o altro)
 // -----------------------------------------
 const pool = new Pool({
-  user: 'postgres',
-  host: 'db.gnpsuzytpytsvngdwxol.supabase.co',
+  user: 'postgres.gnpsuzytpytsvngdwxol',
+  host: 'aws-0-eu-west-1.pooler.supabase.com',
   database: 'postgres',
   password: 'c4TNu$4*5d93R+t',
-  port: 5432,
+  port: 6543,
 });
 
 // -----------------------------------------
