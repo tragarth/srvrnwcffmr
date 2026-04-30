@@ -6,6 +6,8 @@ const cors = require('cors');
 const dns = require('dns').promises;
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
+const { execFile } = require('child_process');
+const path = require('path');
 
 const app = express();
 
@@ -70,10 +72,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Check credenziali env (se vuoi usare env vars in futuro)
-if (
-  !process.env.BREVO_SMTP_USER ||
-  !process.env.BREVO_SMTP_PASS
-) {
+if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASS) {
   console.warn(
     '⚠️ Brevo SMTP credentials non trovate in env vars (BREVO_SMTP_USER/BREVO_SMTP_PASS). Stai usando credenziali hardcoded nel codice.'
   );
@@ -208,9 +207,40 @@ app.post('/api/invia-messaggio', async (req, res) => {
 });
 
 // -----------------------------------------
-// Avvio del Server
+// Avvio del Server (+ smtp-test opzionale)
 // -----------------------------------------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server del bar avviato e in ascolto sulla porta ${PORT}`);
-});
+
+async function runSmtpTestIfEnabled() {
+  // Usa SMTP_DEBUG=1 per far partire smtp-test.js all’avvio
+  if (String(process.env.SMTP_DEBUG || '').toLowerCase() !== '1') return;
+
+  const scriptPath = path.join(__dirname, 'smtp-test.js');
+  console.log('🧪 SMTP_DEBUG=1 -> avvio smtp-test.js:', scriptPath);
+
+  await new Promise((resolve, reject) => {
+    const child = execFile(process.execPath, [scriptPath], { env: process.env }, (err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+
+    // Inoltra stdout/stderr nei logs di Render
+    child.stdout.on('data', (d) => process.stdout.write(d));
+    child.stderr.on('data', (d) => process.stderr.write(d));
+  });
+}
+
+(async () => {
+  try {
+    await runSmtpTestIfEnabled();
+  } catch (e) {
+    console.error('❌ smtp-test.js fallito:', e);
+    // Se preferisci NON bloccare il server quando il test fallisce, lascia così.
+    // Se vuoi bloccare, decommenta:
+    // process.exit(1);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server del bar avviato e in ascolto sulla porta ${PORT}`);
+  });
+})();
