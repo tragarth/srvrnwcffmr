@@ -10,21 +10,24 @@ const PORT = 465;
   const addrs = await dns.lookup(HOST, { all: true });
   console.log(addrs);
 
-  console.log('--- TCP connect test ---');
+  console.log(`--- TCP connect test (${HOST}:${PORT}) ---`);
   const socket = new net.Socket();
 
   const timeoutMs = 10000;
 
-  const p = new Promise((resolve, reject) => {
+  const result = await new Promise((resolve, reject) => {
+    const onError = (e) => reject(e);
+    const onTimeout = () => reject(new Error(`socket timeout after ${timeoutMs}ms`));
+    const onConnect = () => resolve('connected');
+
+    socket.once('error', onError);
+    socket.once('timeout', onTimeout);
+    socket.once('connect', onConnect);
+
     socket.setTimeout(timeoutMs);
-    socket.on('connect', () => resolve('connected'));
-    socket.on('timeout', () => reject(new Error('socket timeout')));
-    socket.on('error', (e) => reject(e));
+    socket.connect(PORT, HOST);
   });
 
-  socket.connect(PORT, HOST);
-
-  const result = await p;
   console.log('Result:', result);
   socket.destroy();
 })().catch((err) => {
