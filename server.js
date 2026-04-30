@@ -71,18 +71,6 @@ const transporter = nodemailer.createTransport({
   debug: true,
 });
 
-  // CORREZIONE: disabilita timeout che possono causare ETIMEDOUT (CONN)
-  connectionTimeout: 0,
-  greetingTimeout: 0,
-  socketTimeout: 0,
-
-  requireTLS: true,
-
-  // debug (facoltativo, utile su Render)
-  logger: true,
-  debug: true,
-});
-
 // Check credenziali env (se vuoi usare env vars in futuro)
 if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASS) {
   console.warn(
