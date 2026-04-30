@@ -48,12 +48,6 @@ const poolPromise = createPool();
 // -----------------------------------------
 // Configurazione Email (Postino Brevo)
 // -----------------------------------------
-// REQUIRED ENV VARS (in Render):
-// - BREVO_SMTP_USER
-// - BREVO_SMTP_PASS
-// - BREVO_FROM (es: "VIP Club <tuomittente@dominio.com>")
-// - CAMPAIGN_TO (es: "email-che-accetta-il-to" oppure la tua email)
-//
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
   port: 587,
@@ -80,19 +74,23 @@ app.post('/api/registrati', async (req, res) => {
     return res.status(400).json({ errore: 'Il consenso alla privacy è obbligatorio.' });
   }
 
+  if (!email) {
+    return res.status(400).json({ errore: 'Email mancante.' });
+  }
+
   try {
     const pool = await poolPromise;
 
-   const query = `
-  INSERT INTO clienti (nome, email, telefono, consenso_gdpr)
-  VALUES ($1, $2, $3, $4)
-  ON CONFLICT (email)
-  DO UPDATE SET
-    nome = EXCLUDED.nome,
-    telefono = EXCLUDED.telefono,
-    consenso_gdpr = EXCLUDED.consenso_gdpr
-  RETURNING *;
-`;
+    const query = `
+      INSERT INTO clienti (nome, email, telefono, consenso_gdpr)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (email)
+      DO UPDATE SET
+        nome = EXCLUDED.nome,
+        telefono = EXCLUDED.telefono,
+        consenso_gdpr = EXCLUDED.consenso_gdpr
+      RETURNING *;
+    `;
     const values = [nome, email, telefono, consenso_gdpr];
 
     await pool.query(query, values);
@@ -101,8 +99,11 @@ app.post('/api/registrati', async (req, res) => {
       .status(201)
       .json({ messaggio: 'Registrazione avvenuta con successo! Mostra questa schermata in cassa.' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ errore: 'Errore durante la registrazione. Forse sei già iscritto?' });
+    console.error('Errore registrazione:', err);
+    res.status(500).json({
+      errore: 'Errore durante la registrazione.',
+      dettaglio: String(err?.message || err),
+    });
   }
 });
 
@@ -164,9 +165,9 @@ app.post('/api/invia-messaggio', async (req, res) => {
       }
 
       await transporter.sendMail({
-        from,                 // from deve essere autorizzato su Brevo
-        to: campaignTo,       // usa un destinatario "test"
-        bcc: listaEmail,      // BCC con array va benissimo
+        from,
+        to: campaignTo,     // destinatario test
+        bcc: listaEmail,    // destinatari reali in BCC
         subject: 'Novità e Sconti dal tuo Bar!',
         text: messaggio,
       });
@@ -184,7 +185,7 @@ app.post('/api/invia-messaggio', async (req, res) => {
     return res.status(400).json({ errore: 'Tipo campagna non valido.' });
   } catch (err) {
     console.error('Errore invio campagna:', err);
-    res.status(500).json({ errore: "Errore durante l'invio della campagna." });
+    res.status(500).json({ errore: 'Errore durante l\'invio della campagna.', dettaglio: String(err?.message || err) });
   }
 });
 
