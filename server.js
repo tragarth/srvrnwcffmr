@@ -53,12 +53,12 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false, // IMPORTANT for 587
   auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
+    user: 'a9b81d001@smtp-brevo.com',
+    pass: 'xsmtpsib-19004745ecae1623b011b4e25c02c3310e32332ed63f615da6b3ca7499761285-lQKBv376UubtnOk',
   },
 });
 
-if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASS) {
+if (!'a9b81d001@smtp-brevo.com' || !'xsmtpsib-19004745ecae1623b011b4e25c02c3310e32332ed63f615da6b3ca7499761285-lQKBv376UubtnOk') {
   console.warn(
     '⚠️ Missing Brevo SMTP credentials. Set BREVO_SMTP_USER and BREVO_SMTP_PASS in Render env vars.'
   );
@@ -112,7 +112,7 @@ app.post('/api/registrati', async (req, res) => {
 // -----------------------------------------
 app.get('/api/clienti', async (req, res) => {
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== process.env.ADMIN_PASSWORD) {
+  if (passwordInserita !== 'golf7R') {
     return res.status(401).json({ errore: 'Accesso negato! Password errata.' });
   }
 
@@ -135,7 +135,7 @@ app.get('/api/clienti', async (req, res) => {
 // -----------------------------------------
 app.post('/api/invia-messaggio', async (req, res) => {
   const passwordInserita = req.headers.authorization;
-  if (passwordInserita !== process.env.ADMIN_PASSWORD) {
+  if (passwordInserita !== 'golf7R') {
     return res.status(401).json({ errore: 'Accesso negato! Non puoi inviare messaggi.' });
   }
 
