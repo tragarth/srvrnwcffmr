@@ -3,7 +3,7 @@ const dns = require('dns').promises;
 const net = require('net');
 
 const HOST = 'smtp-relay.brevo.com';
-const PORT = 587;
+const PORT = 465;
 
 (async () => {
   console.log('--- DNS ---');
