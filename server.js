@@ -83,10 +83,16 @@ app.post('/api/registrati', async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    const query = `
-      INSERT INTO clienti (nome, email, telefono, consenso_gdpr)
-      VALUES ($1, $2, $3, $4) RETURNING *
-    `;
+   const query = `
+  INSERT INTO clienti (nome, email, telefono, consenso_gdpr)
+  VALUES ($1, $2, $3, $4)
+  ON CONFLICT (email)
+  DO UPDATE SET
+    nome = EXCLUDED.nome,
+    telefono = EXCLUDED.telefono,
+    consenso_gdpr = EXCLUDED.consenso_gdpr
+  RETURNING *;
+`;
     const values = [nome, email, telefono, consenso_gdpr];
 
     await pool.query(query, values);
