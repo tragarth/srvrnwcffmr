@@ -56,11 +56,26 @@ const transporter = nodemailer.createTransport({
     user: 'a9b81d001@smtp-brevo.com',
     pass: 'xsmtpsib-19004745ecae1623b011b4e25c02c3310e32332ed63f615da6b3ca7499761285-lQKBv376UubtnOk',
   },
+
+  // CORREZIONE: disabilita timeout che possono causare ETIMEDOUT (CONN)
+  connectionTimeout: 0,
+  greetingTimeout: 0,
+  socketTimeout: 0,
+
+  requireTLS: true,
+
+  // debug (facoltativo, utile su Render)
+  logger: true,
+  debug: true,
 });
 
-if (!'a9b81d001@smtp-brevo.com' || !'xsmtpsib-19004745ecae1623b011b4e25c02c3310e32332ed63f615da6b3ca7499761285-lQKBv376UubtnOk') {
+// Check credenziali env (se vuoi usare env vars in futuro)
+if (
+  !process.env.BREVO_SMTP_USER ||
+  !process.env.BREVO_SMTP_PASS
+) {
   console.warn(
-    '⚠️ Missing Brevo SMTP credentials. Set BREVO_SMTP_USER and BREVO_SMTP_PASS in Render env vars.'
+    '⚠️ Brevo SMTP credentials non trovate in env vars (BREVO_SMTP_USER/BREVO_SMTP_PASS). Stai usando credenziali hardcoded nel codice.'
   );
 }
 
@@ -166,8 +181,8 @@ app.post('/api/invia-messaggio', async (req, res) => {
 
       await transporter.sendMail({
         from,
-        to: campaignTo,     // destinatario test
-        bcc: listaEmail,    // destinatari reali in BCC
+        to: campaignTo, // destinatario test
+        bcc: listaEmail, // destinatari reali in BCC
         subject: 'Novità e Sconti dal tuo Bar!',
         text: messaggio,
       });
@@ -185,7 +200,10 @@ app.post('/api/invia-messaggio', async (req, res) => {
     return res.status(400).json({ errore: 'Tipo campagna non valido.' });
   } catch (err) {
     console.error('Errore invio campagna:', err);
-    res.status(500).json({ errore: 'Errore durante l\'invio della campagna.', dettaglio: String(err?.message || err) });
+    res.status(500).json({
+      errore: 'Errore durante l\'invio della campagna.',
+      dettaglio: String(err?.message || err),
+    });
   }
 });
 
