@@ -52,12 +52,20 @@ const poolPromise = createPool();
 // -----------------------------------------
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false, // IMPORTANT for 587
+  port: 465,
+  secure: true,
   auth: {
     user: 'a9b81d001@smtp-brevo.com',
     pass: 'xsmtpsib-19004745ecae1623b011b4e25c02c3310e32332ed63f615da6b3ca7499761285-lQKBv376UubtnOk',
   },
+
+  connectionTimeout: 0,
+  greetingTimeout: 0,
+  socketTimeout: 0,
+  requireTLS: true,
+  logger: true,
+  debug: true,
+});
 
   // CORREZIONE: disabilita timeout che possono causare ETIMEDOUT (CONN)
   connectionTimeout: 0,
